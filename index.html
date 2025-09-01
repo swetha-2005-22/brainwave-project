@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 NeuroSense - BCI Emotion Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<!-- Add this to your index.html before </body> -->
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-brain"></i> NeuroSense AI</h1>
+            <p>Real-time Emotion Detection from Brainwave Patterns</p>
+        </header>
+
+        <div class="main-content">
+            <div class="input-section">
+                <h2><i class="fas fa-wave-square"></i> EEG Brainwave Input</h2>
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label for="alpha"><i class="fas fa-brain"></i> Alpha Waves (8-13 Hz)</label>
+                        <input type="number" id="alpha" step="0.1" placeholder="8.0 - 15.0" oninput="updateWaveValue('alpha')">
+                        <div class="wave-value" id="alpha-value"></div>
+                    </div>
+                    <div class="input-group">
+                        <label for="beta"><i class="fas fa-bolt"></i> Beta Waves (13-30 Hz)</label>
+                        <input type="number" id="beta" step="0.1" placeholder="12.0 - 30.0" oninput="updateWaveValue('beta')">
+                        <div class="wave-value" id="beta-value"></div>
+                    </div>
+                    <div class="input-group">
+                        <label for="gamma"><i class="fas fa-star"></i> Gamma Waves (30-100 Hz)</label>
+                        <input type="number" id="gamma" step="0.1" placeholder="30.0 - 100.0" oninput="updateWaveValue('gamma')">
+                        <div class="wave-value" id="gamma-value"></div>
+                    </div>
+                    <div class="input-group">
+                        <label for="theta"><i class="fas fa-moon"></i> Theta Waves (4-8 Hz)</label>
+                        <input type="number" id="theta" step="0.1" placeholder="4.0 - 8.0" oninput="updateWaveValue('theta')">
+                        <div class="wave-value" id="theta-value"></div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button onclick="loadSample('Happy')"><i class="fas fa-smile"></i> Happy Sample</button>
+                    <button onclick="loadSample('Relaxed')"><i class="fas fa-couch"></i> Relaxed Sample</button>
+                    <button onclick="loadSample('Sad')"><i class="fas fa-sad-tear"></i> Sad Sample</button>
+                    <button onclick="predictEmotion()" class="primary" id="analyze-btn">
+                        <i class="fas fa-search"></i> Analyze Emotion
+                    </button>
+                    <button onclick="resetForm()" style="background: #6c757d;">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h2><i class="fas fa-chart-line"></i> Emotion Analysis</h2>
+                <div id="predictionResult" class="result-box">
+                    <div class="welcome-message">
+                        <i class="fas fa-brain" style="font-size: 3em; color: #667eea; margin-bottom: 20px;"></i>
+                        <h3>Welcome to NeuroSense AI</h3>
+                        <p>Enter brainwave values or use sample data to detect emotions</p>
+                    </div>
+                </div>
+                
+                <div class="probability-chart">
+                    <h3><i class="fas fa-chart-pie"></i> Emotion Probabilities</h3>
+                    <div id="probabilityBars"></div>
+                </div>
+
+                <div class="brainwave-display">
+                    <h3><i class="fas fa-waveform"></i> Brainwave Values</h3>
+                    <div id="brainwaveValues"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3><i class="fas fa-info-circle"></i> Detected Emotions & Brainwave Patterns</h3>
+            <ul>
+                <li><span class="state happy">Happy</span> - Increased beta waves (13-30Hz), associated with positive engagement, focus, and active thinking</li>
+                <li><span class="state relaxed">Relaxed</span> - Alpha waves dominant (8-13Hz), indicating calm, peaceful, and meditative states</li>
+                <li><span class="state sad">Sad</span> - Theta waves present (4-8Hz), often linked to deep contemplation, sadness, and drowsiness</li>
+            </ul>
+        </div>
+
+        <footer style="text-align: center; margin-top: 30px; padding: 20px; color: #6c757d;">
+            <p>🧠 NeuroSense AI - Brain Computer Interface | Final Year Project © 2024</p>
+        </footer>
+    </div>
+
+    <script>
+        // Update wave value indicators
+        function updateWaveValue(waveType) {
+            const value = document.getElementById(waveType).value;
+            const valueDiv = document.getElementById(waveType + '-value');
+            if (value) {
+                valueDiv.textContent = value;
+                valueDiv.style.display = 'block';
+            } else {
+                valueDiv.style.display = 'none';
+            }
+        }
+
+        // Reset form function
+        function resetForm() {
+            document.getElementById('alpha').value = '';
+            document.getElementById('beta').value = '';
+            document.getElementById('gamma').value = '';
+            document.getElementById('theta').value = '';
+            
+            document.querySelectorAll('.wave-value').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            document.getElementById('predictionResult').innerHTML = `
+                <div class="welcome-message">
+                    <i class="fas fa-brain" style="font-size: 3em; color: #667eea; margin-bottom: 20px;"></i>
+                    <h3>Welcome to NeuroSense AI</h3>
+                    <p>Enter brainwave values or use sample data to detect emotions</p>
+                </div>
+            `;
+            
+            document.getElementById('probabilityBars').innerHTML = '';
+            document.getElementById('brainwaveValues').innerHTML = '';
+        }
+
+        async function loadSample(emotion) {
+            const response = await fetch('/sample_data');
+            const data = await response.json();
+            if (data.samples && data.samples[emotion]) {
+                const sample = data.samples[emotion];
+                document.getElementById('alpha').value = sample.alpha;
+                document.getElementById('beta').value = sample.beta;
+                document.getElementById('gamma').value = sample.gamma;
+                document.getElementById('theta').value = sample.theta;
+                
+                // Update value displays
+                updateWaveValue('alpha');
+                updateWaveValue('beta');
+                updateWaveValue('gamma');
+                updateWaveValue('theta');
+            }
+        }
+
+        async function predictEmotion() {
+            const alpha = parseFloat(document.getElementById('alpha').value);
+            const beta = parseFloat(document.getElementById('beta').value);
+            const gamma = parseFloat(document.getElementById('gamma').value);
+            const theta = parseFloat(document.getElementById('theta').value);
+            
+            if (isNaN(alpha) || isNaN(beta) || isNaN(gamma) || isNaN(theta)) {
+                alert('Please enter valid numbers for all brainwave values');
+                return;
+            }
+
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const originalText = analyzeBtn.innerHTML;
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+            analyzeBtn.disabled = true;
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        alpha: alpha,
+                        beta: beta,
+                        gamma: gamma,
+                        theta: theta
+                    })
+                });
+
+                const result = await response.json();
+                
+                analyzeBtn.innerHTML = originalText;
+                analyzeBtn.disabled = false;
+
+                if (result.error) {
+                    document.getElementById('predictionResult').innerHTML = 
+                        `<p class="error"><i class="fas fa-exclamation-triangle"></i> Error: ${result.error}</p>`;
+                    return;
+                }
+
+                // Update prediction result
+                document.getElementById('predictionResult').innerHTML = `
+                    <h3 class="prediction ${result.prediction.toLowerCase()}">
+                        <i class="fas fa-${result.prediction.toLowerCase() === 'happy' ? 'smile' : result.prediction.toLowerCase() === 'relaxed' ? 'couch' : 'sad-tear'}"></i>
+                        ${result.prediction}
+                    </h3>
+                    <p>${result.description}</p>
+                    <p><strong>Confidence: ${(result.confidence * 100).toFixed(1)}%</strong></p>
+                `;
+
+                // Update probability bars
+                const probBars = document.getElementById('probabilityBars');
+                probBars.innerHTML = '';
+                
+                for (const [emotion, prob] of Object.entries(result.probabilities)) {
+                    const bar = document.createElement('div');
+                    bar.className = 'bar-container';
+                    bar.innerHTML = `
+                        <div class="bar-label">
+                            <span>${emotion}</span>
+                            <span>${(prob * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="bar">
+                            <div class="bar-fill ${emotion.toLowerCase()}" 
+                                 style="width: ${prob * 100}%">
+                                <span class="bar-value">${(prob * 100).toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    `;
+                    probBars.appendChild(bar);
+                }
+
+                // Update brainwave values
+                const brainwaveDiv = document.getElementById('brainwaveValues');
+                brainwaveDiv.innerHTML = `
+                    <div class="brainwave-grid">
+                        <div><i class="fas fa-brain"></i> Alpha: ${result.brainwaves.alpha.toFixed(2)}</div>
+                        <div><i class="fas fa-bolt"></i> Beta: ${result.brainwaves.beta.toFixed(2)}</div>
+                        <div><i class="fas fa-star"></i> Gamma: ${result.brainwaves.gamma.toFixed(2)}</div>
+                        <div><i class="fas fa-moon"></i> Theta: ${result.brainwaves.theta.toFixed(2)}</div>
+                    </div>
+                `;
+
+            } catch (error) {
+                analyzeBtn.innerHTML = originalText;
+                analyzeBtn.disabled = false;
+                document.getElementById('predictionResult').innerHTML = 
+                    `<p class="error"><i class="fas fa-exclamation-triangle"></i> Error: ${error.message}</p>`;
+            }
+        }
+
+        // Initialize wave value displays
+        document.addEventListener('DOMContentLoaded', function() {
+            ['alpha', 'beta', 'gamma', 'theta'].forEach(wave => {
+                updateWaveValue(wave);
+            });
+        });
+    </script>
+</body>
+</html>
